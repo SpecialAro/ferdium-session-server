@@ -38,6 +38,7 @@
       socket.on("receive-file", (data) => {
         // Handle received data here
         const { buffer, filename, type } = data;
+        const code = document.getElementById("codeInput").value;
 
         const fileReceiver = document.getElementById("fileReceiver");
         fileReceiver.innerHTML = `<p>Received File</p>`;
@@ -50,6 +51,7 @@
         downloadButton.buffer = buffer;
         downloadButton.file = { filename, type };
         console.log(data);
+        socket.emit("file-received", code);
       });
 
       function downloadFile() {

@@ -10,12 +10,10 @@ const app: Express = express();
 const port = process.env.PORT || 3000;
 
 app.get("/sender", (req: Request, res: Response) => {
-  // res.send("Express + TypeScript Server");
   res.sendFile(__dirname + "/html/sender.html");
 });
 
 app.get("/receiver", (req: Request, res: Response) => {
-  // res.send("Express + TypeScript Server");
   res.sendFile(__dirname + "/html/receiver.html");
 });
 
@@ -23,7 +21,9 @@ const server = app.listen(port, () => {
   console.log(`[server]: Server is running at http://localhost:${port}`);
 });
 
-const io = new SocketIo.Server(server);
+const io = new SocketIo.Server(server, {
+  maxHttpBufferSize: 1e8, // 100 MB
+});
 
 const users = new Map<string, { host: string; timeout: NodeJS.Timeout }>();
 const TIMEOUT = 5 * 60 * 1000;
@@ -31,6 +31,7 @@ const TIMEOUT = 5 * 60 * 1000;
 io.on("connection", (socket) => {
   socket.on("generate-code", () => {
     const code = generateCode();
+    deleteAllKeys(socket.id);
     users.set(code, {
       host: socket.id,
       timeout: setTimeout(() => {
@@ -42,6 +43,15 @@ io.on("connection", (socket) => {
     socket.emit("code", code);
     socket.join(code);
     console.log(users);
+  });
+
+  socket.on("file-received", (code: string) => {
+    socket.to(code).emit("file-received");
+    const user = users.get(code);
+    if (user) {
+      clearTimeout(user.timeout);
+      users.delete(code);
+    }
   });
 
   socket.on("join-channel", (guess: string) => {
@@ -59,15 +69,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    // find all keys a user has and delete them
-    const keys = Array.from(users.keys());
-    for (const key of keys) {
-      const user = users.get(key);
-      if (user && user.host === socket.id) {
-        clearTimeout(user.timeout);
-        users.delete(key);
-      }
-    }
+    deleteAllKeys(socket.id);
     console.log("user disconnected");
     console.log(users);
   });
@@ -81,4 +83,15 @@ function generateCode() {
   );
 
   return nanoid();
+}
+
+function deleteAllKeys(socketId: string) {
+  const keys = Array.from(users.keys());
+  for (const key of keys) {
+    const user = users.get(key);
+    if (user && user.host === socketId) {
+      clearTimeout(user.timeout);
+      users.delete(key);
+    }
+  }
 }
