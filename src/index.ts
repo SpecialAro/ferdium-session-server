@@ -25,13 +25,23 @@ const server = app.listen(port, () => {
 
 const io = new SocketIo.Server(server);
 
-const users = new Map<string, { host: string }>();
+const users = new Map<string, { host: string; timeout: NodeJS.Timeout }>();
+const TIMEOUT = 5 * 60 * 1000;
+
 io.on("connection", (socket) => {
   socket.on("generate-code", () => {
     const code = generateCode();
-    users.set(code, { host: socket.id });
+    users.set(code, {
+      host: socket.id,
+      timeout: setTimeout(() => {
+        io.socketsLeave(code);
+        users.delete(code);
+        console.log(`Code ${code} has expired and been removed.`);
+      }, TIMEOUT),
+    });
     socket.emit("code", code);
     socket.join(code);
+    console.log(users);
   });
 
   socket.on("join-channel", (guess: string) => {
@@ -52,7 +62,9 @@ io.on("connection", (socket) => {
     // find all keys a user has and delete them
     const keys = Array.from(users.keys());
     for (const key of keys) {
-      if (users.get(key)?.host === socket.id) {
+      const user = users.get(key);
+      if (user && user.host === socket.id) {
+        clearTimeout(user.timeout);
         users.delete(key);
       }
     }
