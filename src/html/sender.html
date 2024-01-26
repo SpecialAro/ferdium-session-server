@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sender Client</title>
+  </head>
+  <body>
+    <h1>Sender Client</h1>
+    <div id="generatedCode"></div>
+
+    <input type="file" id="fileInput" />
+    <button onclick="generateAndSendCode()">Generate Code and Send File</button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      function generateAndSendCode() {
+        socket.emit("generate-code");
+      }
+
+      socket.on("code", (code) => {
+        const generatedCodeDiv = document.getElementById("generatedCode");
+        generatedCodeDiv.innerHTML = `<p>Generated Code: ${code}</p>`;
+      });
+
+      socket.on("ready-to-send", () => {
+        const fileInput = document.getElementById("fileInput");
+        const file = fileInput.files[0];
+        console.log(file);
+
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const fileContent = event.target.result;
+            const buffer = new Uint8Array(fileContent); // Convert to buffer
+
+            const channel = document
+              .getElementById("generatedCode")
+              .textContent.trim()
+              .split(":")[1]
+              .trim();
+
+            socket.emit("send-file", channel, {
+              buffer,
+              filename: file.name,
+              type: file.type,
+            });
+          };
+          reader.readAsArrayBuffer(file);
+        } else {
+          alert("Please select a file before sending.");
+        }
+      });
+    </script>
+  </body>
+</html>

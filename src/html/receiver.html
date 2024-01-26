@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Receiver Client</title>
+  </head>
+  <body>
+    <h1>Receiver Client</h1>
+    <label for="codeInput">Enter Code:</label>
+    <input type="text" id="codeInput" />
+    <button onclick="joinChannel()">Join Channel</button>
+    <div id="invalidCode"></div>
+
+    <div id="fileReceiver"></div>
+
+    <button id="downloadButton" style="display: none" onclick="downloadFile()">
+      Download File
+    </button>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script>
+      const socket = io();
+
+      function joinChannel() {
+        const code = document.getElementById("codeInput").value;
+        if (code.trim() !== "") {
+          socket.emit("join-channel", code);
+        }
+      }
+
+      socket.on("invalid-code", () => {
+        const invalidCodeDiv = document.getElementById("invalidCode");
+        invalidCodeDiv.innerHTML = `<p>Invalid Code</p>`;
+      });
+
+      socket.on("receive-file", (data) => {
+        // Handle received data here
+        const { buffer, filename, type } = data;
+
+        const fileReceiver = document.getElementById("fileReceiver");
+        fileReceiver.innerHTML = `<p>Received File</p>`;
+
+        // Show the download button
+        const downloadButton = document.getElementById("downloadButton");
+        downloadButton.style.display = "block";
+
+        // Store the buffer and extension for download
+        downloadButton.buffer = buffer;
+        downloadButton.file = { filename, type };
+        console.log(data);
+      });
+
+      function downloadFile() {
+        const buffer = document.getElementById("downloadButton").buffer;
+        const file = document.getElementById("downloadButton").file;
+        const filename = file.filename;
+        const blob = new Blob([buffer], { type: file.type });
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      }
+    </script>
+  </body>
+</html>
