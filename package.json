@@ -2,6 +2,10 @@
   "name": "ferdium-session-server",
   "version": "1.0.0",
   "description": "",
+  "engines": {
+    "node": "20.11.0",
+    "pnpm": "8.14.1"
+  },
   "scripts": {
     "build": "npx tsc",
     "start": "node build/index.js",
